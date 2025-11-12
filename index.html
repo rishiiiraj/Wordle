@@ -15,10 +15,11 @@
       display: flex;
       flex-direction: column;
       align-items: center;
+      justify-content: flex-start;
     }
 
     h1 {
-      margin: 15px 0;
+      margin: 20px 0;
       font-size: 1.8rem;
       text-align: center;
     }
@@ -28,7 +29,7 @@
       grid-template-columns: repeat(5, 60px);
       grid-template-rows: repeat(6, 60px);
       gap: 8px;
-      margin-top: 10px;
+      margin-top: 20px;
     }
 
     .tile {
@@ -42,163 +43,99 @@
       text-transform: uppercase;
       background-color: #121213;
       border-radius: 5px;
-      user-select: none;
-    }
-
-    #keyboard {
-      margin-top: 25px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 6px;
-      padding-bottom: 20px;
-    }
-
-    .key-row {
-      display: flex;
-      gap: 6px;
-    }
-
-    button.key {
-      background-color: #818384;
-      border: none;
-      border-radius: 4px;
-      color: white;
-      font-size: 1rem;
-      padding: 12px 8px;
-      min-width: 35px;
-      cursor: pointer;
-      text-transform: uppercase;
-    }
-
-    button.key.wide {
-      min-width: 60px;
     }
 
     .correct { background-color: #538d4e !important; }
     .present { background-color: #b59f3b !important; }
     .absent { background-color: #3a3a3c !important; }
 
+    #guessInput {
+      opacity: 0;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 1px;
+      height: 1px;
+      border: none;
+    }
+
     @media (max-width: 600px) {
-      #board { grid-template-columns: repeat(5, 50px); grid-template-rows: repeat(6, 50px); }
-      .tile { width: 50px; height: 50px; font-size: 1.5rem; }
-      button.key { padding: 10px 6px; font-size: 0.9rem; }
+      #board {
+        grid-template-columns: repeat(5, 50px);
+        grid-template-rows: repeat(6, 50px);
+      }
+      .tile {
+        width: 50px;
+        height: 50px;
+        font-size: 1.5rem;
+      }
     }
   </style>
 </head>
 <body>
   <h1>Khushi's Wordle 💖</h1>
   <div id="board"></div>
-  <div id="keyboard"></div>
+  <input id="guessInput" type="text" maxlength="5" autocapitalize="none" />
 
   <script>
-    // A small English word list (you can expand later)
+    // Small word list for validation (you can expand this)
     const dictionary = [
-      "apple","grape","pearl","heart","smile","dream","charm","sweet","light","flame",
-      "happy","lover","angel","spark","grace","music","truth","world","khush","magic",
-      "candy","shine","peace","bliss","petal","laugh","words","bring","share","touch",
-      "treat","start","learn","smile","sweet","night","crown","speak","right","worth"
+      "apple","grape","sweet","heart","dream","smile","light","happy","pearl",
+      "lover","angel","charm","shine","magic","flame","peace","truth","laugh",
+      "grace","spark","khush","bliss","petal","candy","music","world","think",
+      "touch","words","smile","spark","bright","night","chase","sound"
     ];
 
     let targetWord = dictionary[Math.floor(Math.random() * dictionary.length)];
     let currentRow = 0;
-    let currentCol = 0;
     let gameOver = false;
 
     const board = document.getElementById("board");
-    const keyboard = document.getElementById("keyboard");
+    const input = document.getElementById("guessInput");
 
-    // Create tiles
+    // Create 6 rows × 5 columns
     for (let i = 0; i < 30; i++) {
       const tile = document.createElement("div");
       tile.classList.add("tile");
       board.appendChild(tile);
     }
 
-    // Create on-screen keyboard
-    const keyLayout = [
-      "qwertyuiop",
-      "asdfghjkl",
-      "EnterzxcvbnmBack"
-    ];
-
-    keyLayout.forEach(row => {
-      const rowDiv = document.createElement("div");
-      rowDiv.classList.add("key-row");
-
-      if (row.includes("Enter")) {
-        const enter = document.createElement("button");
-        enter.textContent = "Enter";
-        enter.classList.add("key", "wide");
-        enter.onclick = () => handleKey("Enter");
-        rowDiv.appendChild(enter);
-      }
-
-      row.replace("Enter", "").split("").forEach(letter => {
-        if (letter === "B") return;
-        const btn = document.createElement("button");
-        btn.textContent = letter;
-        btn.classList.add("key");
-        btn.onclick = () => handleKey(letter);
-        rowDiv.appendChild(btn);
-      });
-
-      if (row.includes("Back")) {
-        const back = document.createElement("button");
-        back.textContent = "⌫";
-        back.classList.add("key", "wide");
-        back.onclick = () => handleKey("Backspace");
-        rowDiv.appendChild(back);
-      }
-
-      keyboard.appendChild(rowDiv);
+    // Focus input when tapping board (mobile keyboard opens)
+    board.addEventListener("click", () => {
+      input.focus();
     });
 
-    // Support physical keyboards too
-    document.addEventListener("keydown", e => handleKey(e.key));
+    input.addEventListener("input", (e) => {
+      const guess = e.target.value.toLowerCase();
+      const tiles = Array.from(board.children).slice(currentRow * 5, currentRow * 5 + 5);
 
-    function handleKey(key) {
+      tiles.forEach((tile, i) => {
+        tile.textContent = guess[i] || "";
+      });
+
+      if (guess.length === 5) {
+        submitGuess(guess);
+      }
+    });
+
+    function submitGuess(guess) {
       if (gameOver) return;
 
-      if (key === "Enter") {
-        submitWord();
-      } else if (key === "Backspace") {
-        deleteLetter();
-      } else if (/^[a-zA-Z]$/.test(key)) {
-        addLetter(key.toLowerCase());
-      }
-    }
-
-    function addLetter(letter) {
-      if (currentCol < 5) {
-        const tile = board.children[currentRow * 5 + currentCol];
-        tile.textContent = letter;
-        currentCol++;
-      }
-    }
-
-    function deleteLetter() {
-      if (currentCol > 0) {
-        currentCol--;
-        const tile = board.children[currentRow * 5 + currentCol];
-        tile.textContent = "";
-      }
-    }
-
-    function submitWord() {
-      if (currentCol < 5) return;
-
-      const guess = Array.from({length: 5}, (_, i) =>
-        board.children[currentRow * 5 + i].textContent
-      ).join("");
-
-      if (!dictionary.includes(guess)) {
-        alert("❌ Not a valid word!");
+      if (!/^[a-z]{5}$/.test(guess)) {
+        alert("Enter a 5-letter word.");
+        input.value = "";
         return;
       }
 
-      const guessLetters = guess.split("");
+      // Check if it's a valid English word (within or outside our small list)
+      if (!dictionary.includes(guess)) {
+        alert("❌ Not a valid word!");
+        input.value = "";
+        return;
+      }
+
       const targetLetters = targetWord.split("");
+      const guessLetters = guess.split("");
 
       guessLetters.forEach((letter, i) => {
         const tile = board.children[currentRow * 5 + i];
@@ -212,19 +149,18 @@
       });
 
       if (guess === targetWord) {
-        setTimeout(() => alert(`💖 Yay! The word was "${targetWord}"`), 100);
-        setTimeout(resetGame, 800);
+        setTimeout(() => alert(`💖 You got it! The word was "${targetWord}"`), 200);
+        setTimeout(resetGame, 1000);
         gameOver = true;
-        return;
-      }
+      } else {
+        currentRow++;
+        input.value = "";
 
-      currentRow++;
-      currentCol = 0;
-
-      if (currentRow === 6) {
-        setTimeout(() => alert(`😢 The word was "${targetWord}".`), 100);
-        setTimeout(resetGame, 800);
-        gameOver = true;
+        if (currentRow === 6) {
+          setTimeout(() => alert(`😢 The word was "${targetWord}"`), 200);
+          setTimeout(resetGame, 1000);
+          gameOver = true;
+        }
       }
     }
 
@@ -234,9 +170,10 @@
         tile.className = "tile";
       });
       currentRow = 0;
-      currentCol = 0;
-      gameOver = false;
+      input.value = "";
       targetWord = dictionary[Math.floor(Math.random() * dictionary.length)];
+      gameOver = false;
+      input.focus();
     }
   </script>
 </body>
