@@ -1,222 +1,193 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Khushi's Wordle 💖</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Khushi's Wordle 💛</title>
   <style>
     body {
-      font-family: 'Arial', sans-serif;
+      font-family: 'Helvetica Neue', sans-serif;
+      background-color: #f8f9fa;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: flex-start;
+      justify-content: center;
       height: 100vh;
       margin: 0;
-      background-color: #fff5f7;
     }
-    h1 {
-      margin: 20px;
-      color: #d63384;
-    }
-    .board {
+    h1 { margin-bottom: 20px; color: #333; text-align: center; }
+    #board {
       display: grid;
       grid-template-rows: repeat(6, 1fr);
-      gap: 5px;
-      margin-top: 20px;
+      grid-gap: 5px;
     }
     .row {
       display: grid;
       grid-template-columns: repeat(5, 1fr);
-      gap: 5px;
+      grid-gap: 5px;
     }
     .tile {
       width: 60px;
       height: 60px;
-      border: 2px solid #ccc;
+      border: 2px solid #d3d6da;
       display: flex;
-      justify-content: center;
       align-items: center;
-      font-size: 2rem;
-      font-weight: bold;
+      justify-content: center;
+      font-size: 2em;
       text-transform: uppercase;
       background-color: white;
+      font-weight: bold;
+      transition: background-color 0.2s ease;
     }
-    .correct {
+    .correct { background-color: #6aaa64; color: white; border-color: #6aaa64; }
+    .present { background-color: #c9b458; color: white; border-color: #c9b458; }
+    .absent { background-color: #787c7e; color: white; border-color: #787c7e; }
+    button {
+      margin: 10px;
+      padding: 10px 20px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: none;
       background-color: #6aaa64;
       color: white;
+      cursor: pointer;
     }
-    .present {
-      background-color: #c9b458;
-      color: white;
-    }
-    .absent {
-      background-color: #787c7e;
-      color: white;
-    }
-    #message {
-      margin-top: 20px;
-      font-weight: bold;
-    }
-    #play-again {
-      display: none;
-      margin-top: 15px;
-      padding: 10px 20px;
-      border: none;
-      background-color: #d63384;
-      color: white;
-      font-size: 1rem;
-      border-radius: 6px;
-    }
-    #play-again:hover {
-      background-color: #b12b6d;
-    }
-    #hidden-input {
-      opacity: 0;
-      position: absolute;
-      pointer-events: none;
-    }
+    button:hover { opacity: 0.9; }
   </style>
 </head>
 <body>
-  <h1>Khushi's Wordle 💖</h1>
-  <div class="board" id="board"></div>
-  <p id="message"></p>
-  <button id="play-again">Play Again</button>
-  <input type="text" id="hidden-input" maxlength="5" />
+  <h1>Khushi's Wordle 💛</h1>
+  <div id="board"></div>
+  <button id="play-again" style="display:none;">Play Again</button>
+  <button id="share" style="display:none;">Share Result</button>
 
   <script>
-    const board = document.getElementById("board");
-    const message = document.getElementById("message");
-    const playAgainBtn = document.getElementById("play-again");
-    const hiddenInput = document.getElementById("hidden-input");
-
-    let currentRow = 0;
-    let currentTile = 0;
-    let gameOver = false;
-    let targetWord = "";
-
-    // 🎯 Curated 200 real 5-letter words
-    const wordList = [
-      "apple","grape","chair","light","table","dream","smile","heart","bread","cloud",
-      "plant","ocean","earth","grass","stone","flame","drink","laugh","music","beach",
-      "peace","fruit","angel","lemon","dance","sweet","honey","charm","fancy","tiger",
-      "candy","sugar","blush","storm","happy","lucky","piano","flute","drift","quiet",
-      "lover","river","green","brown","shine","sleep","world","think","faith","scent",
-      "glory","chase","truth","grace","spark","flair","bloom","frost","spice","fairy",
-      "dream","bliss","proud","trust","brave","clear","swing","blink","chill","lunar",
-      "venus","pearl","robin","zebra","flock","siren","daisy","crown","eager","swift",
-      "fresh","glide","storm","moody","noble","mirth","rapid","serum","vivid","quiet",
-      "lodge","truce","vapor","magic","angel","fable","mango","berry","cocoa","olive",
-      "tulip","water","flame","grain","bloom","coral","amber","frost","nurse","lilac",
-      "ivory","sheep","flint","whale","bison","camel","eagle","otter","squid","panda",
-      "peach","melon","lemon","guava","chili","sauce","baker","toast","drink","scone",
-      "grind","blend","pasta","sushi","treat","flour","spoon","knife","onion","spice",
-      "angel","chess","queen","knock","faith","pride","loyal","loved","truly","smile",
-      "write","speak","sweet","shine","color","amber","crisp","merry","cider","valve",
-      "silly","jolly","novel","union","cabin","scoop","fetch","guard","level","press",
-      "towel","swept","bonus","fancy","ninth","joint","mover","toast","dough","pouch",
-      "treat","shine","valor","flair","berry","cocoa","blush","mirth","eager","vivid"
+    const validAnswers = [
+      "apple","grape","lemon","mango","pearl","crane","flute","smile","tiger","zebra","brave","charm","flame","ocean","spice",
+      "lucky","dream","heart","storm","earth","cloud","river","sugar","swing","trail","glory","night","light","chase","truth",
+      "angel","crown","giant","magic","sword","stone","roast","green","bloom","shine","spoon","taste","glass","flock","bread",
+      "beach","spark","quilt","piano","horse","blush","amber","frost","ghost","berry","punch","cocoa","sweep","daisy","vivid",
+      "honey","grind","chili","brisk","crisp","steel","witty","class","baker","noble","wheat","paint","siren","sweet","plume",
+      "cider","fable","eagle","flair","grill","heist","input","joker","lunar","melon","ninja","olive","peony","quest","raven",
+      "scoop","toast","umbra","vapor","whale","yield","zesty","blaze","caper","drove","elite","fancy","hound","ivory","jewel",
+      "karma","linen","mirth","nurse","oasis","plush","quake","rider","sandy","tidal","vivid","woven","youth","amber","candy",
+      "dizzy","flask","gleam","hazel","index","jolly","kneel","latch","mimic","naval","perch","quirk","reign","savor","tempo",
+      "unity","vital","woven","yacht","zebra"
     ];
 
-    function pickWord() {
-      targetWord = wordList[Math.floor(Math.random() * wordList.length)];
-      console.log("Target word:", targetWord);
-    }
+    let answer = validAnswers[Math.floor(Math.random() * validAnswers.length)];
+    let currentRow = 0;
+    let currentCol = 0;
+    let gameOver = false;
+    let resultsGrid = [];
 
-    function createBoard() {
-      board.innerHTML = "";
-      for (let i = 0; i < 6; i++) {
-        const row = document.createElement("div");
-        row.classList.add("row");
-        for (let j = 0; j < 5; j++) {
-          const tile = document.createElement("div");
-          tile.classList.add("tile");
-          row.appendChild(tile);
-        }
-        board.appendChild(row);
+    const board = document.getElementById("board");
+    const playAgainBtn = document.getElementById("play-again");
+    const shareBtn = document.getElementById("share");
+
+    // create grid
+    for (let i = 0; i < 6; i++) {
+      const row = document.createElement("div");
+      row.classList.add("row");
+      for (let j = 0; j < 5; j++) {
+        const tile = document.createElement("div");
+        tile.classList.add("tile");
+        row.appendChild(tile);
       }
+      board.appendChild(row);
     }
 
-    function resetGame() {
-      currentRow = 0;
-      currentTile = 0;
-      gameOver = false;
-      message.textContent = "";
-      playAgainBtn.style.display = "none";
-      hiddenInput.value = "";
-      createBoard();
-      pickWord();
-    }
+    document.addEventListener("keydown", handleKeyPress);
 
-    function handleInput(e) {
+    function handleKeyPress(e) {
       if (gameOver) return;
-      let value = e.target.value.toLowerCase();
+      const rows = document.querySelectorAll(".row");
+      const currentTiles = rows[currentRow].querySelectorAll(".tile");
 
-      // Only letters
-      if (!/^[a-z]*$/.test(value)) {
-        e.target.value = value.replace(/[^a-z]/g, "");
-        return;
-      }
-
-      if (value.length > currentTile) {
-        // add letter
-        if (currentTile < 5) {
-          rows[currentRow].children[currentTile].textContent = value[currentTile];
-          currentTile++;
+      if (e.key === "Backspace") {
+        if (currentCol > 0) {
+          currentCol--;
+          currentTiles[currentCol].textContent = "";
         }
-      } else if (value.length < currentTile) {
-        // backspace
-        currentTile--;
-        rows[currentRow].children[currentTile].textContent = "";
-      }
-
-      if (currentTile === 5 && e.inputType !== "deleteContentBackward") {
-        checkWord(value);
-        e.target.value = "";
+      } else if (e.key === "Enter") {
+        if (currentCol === 5) {
+          checkGuess(currentTiles);
+        }
+      } else if (/^[a-zA-Z]$/.test(e.key)) {
+        if (currentCol < 5) {
+          currentTiles[currentCol].textContent = e.key.toUpperCase();
+          currentCol++;
+        }
       }
     }
 
-    function checkWord(word) {
-      const rowTiles = rows[currentRow].children;
-      const targetArr = targetWord.split("");
+    function checkGuess(tiles) {
+      let guess = "";
+      tiles.forEach(tile => guess += tile.textContent.toLowerCase());
 
+      const result = [];
+      const answerLetters = answer.split("");
+      const guessLetters = guess.split("");
+      const answerUsed = Array(5).fill(false);
+
+      // Pass 1: mark greens
       for (let i = 0; i < 5; i++) {
-        if (word[i] === targetWord[i]) {
-          rowTiles[i].classList.add("correct");
-        } else if (targetArr.includes(word[i])) {
-          rowTiles[i].classList.add("present");
-        } else {
-          rowTiles[i].classList.add("absent");
+        if (guessLetters[i] === answerLetters[i]) {
+          result[i] = "correct";
+          answerUsed[i] = true;
         }
       }
 
-      if (word === targetWord) {
-        message.textContent = "🎉 You guessed it! ❤️";
-        endGame();
-        return;
+      // Pass 2: mark yellows
+      for (let i = 0; i < 5; i++) {
+        if (!result[i]) {
+          const foundIndex = answerLetters.findIndex(
+            (ch, idx) => ch === guessLetters[i] && !answerUsed[idx]
+          );
+          if (foundIndex !== -1) {
+            result[i] = "present";
+            answerUsed[foundIndex] = true;
+          } else {
+            result[i] = "absent";
+          }
+        }
       }
 
-      currentRow++;
-      currentTile = 0;
-      if (currentRow === 6) {
-        message.textContent = `😢 The word was ${targetWord.toUpperCase()}`;
-        endGame();
+      // Apply styles
+      let emojiRow = "";
+      for (let i = 0; i < 5; i++) {
+        tiles[i].classList.add(result[i]);
+        emojiRow += result[i] === "correct" ? "🟩" : result[i] === "present" ? "🟨" : "⬜";
+      }
+      resultsGrid.push(emojiRow);
+
+      if (guess === answer) {
+        endGame(true);
+      } else if (currentRow === 5) {
+        endGame(false);
+      } else {
+        currentRow++;
+        currentCol = 0;
       }
     }
 
-    function endGame() {
+    function endGame(won) {
       gameOver = true;
       playAgainBtn.style.display = "inline-block";
+      shareBtn.style.display = "inline-block";
+      let message = won ? `You got it! 🎉 The word was: ${answer.toUpperCase()}` :
+                          `Game over! The word was: ${answer.toUpperCase()}`;
+      alert(message);
     }
 
-    document.body.addEventListener("click", () => hiddenInput.focus());
-    hiddenInput.addEventListener("input", handleInput);
-    playAgainBtn.addEventListener("click", resetGame);
+    playAgainBtn.onclick = () => location.reload();
 
-    createBoard();
-    const rows = document.querySelectorAll(".row");
-    pickWord();
+    shareBtn.onclick = () => {
+      const emojiText = resultsGrid.join("\n");
+      const text = `Khushi's Wordle 💛\n${emojiText}\nhttps://rishiiiraj.github.io/Wordle/`;
+      navigator.clipboard.writeText(text);
+      alert("Copied results to clipboard!");
+    };
   </script>
 </body>
 </html>
