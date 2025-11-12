@@ -80,22 +80,16 @@
     let gameOver = false;
     let targetWord = "";
 
-    // Load a large 5-letter dictionary
-    let validWords = [];
-
+    // Load a random word from a big dictionary
     async function loadWords() {
       const res = await fetch("https://raw.githubusercontent.com/dwyl/english-words/master/words_alpha.txt");
       const text = await res.text();
-      validWords = text.split("\n").filter(w => w.length === 5);
-      pickRandomWord();
-    }
-
-    function pickRandomWord() {
-      targetWord = validWords[Math.floor(Math.random() * validWords.length)].toLowerCase();
+      const allWords = text.split("\n").filter(w => w.length === 5);
+      targetWord = allWords[Math.floor(Math.random() * allWords.length)].toLowerCase();
       console.log("Target:", targetWord); // For testing
     }
 
-    // Create grid
+    // Create board
     for (let i = 0; i < 6; i++) {
       const row = document.createElement("div");
       row.classList.add("row");
@@ -109,7 +103,7 @@
 
     const rows = document.querySelectorAll(".row");
 
-    // Tap anywhere to focus hidden input (for mobile)
+    // Allow tapping anywhere to type (mobile keyboard)
     document.body.addEventListener("click", () => hiddenInput.focus());
     hiddenInput.addEventListener("input", handleInput);
 
@@ -140,11 +134,6 @@
     }
 
     function checkWord(word) {
-      if (!validWords.includes(word)) {
-        message.textContent = "Not a valid word!";
-        return;
-      }
-
       const rowTiles = rows[currentRow].children;
       const targetArr = targetWord.split("");
 
