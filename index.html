@@ -3,178 +3,176 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Khushi's Wordle 💖</title>
+  <title>Khushi's Wordle</title>
   <style>
     body {
-      background-color: #121213;
-      color: #ffffff;
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 0;
-      height: 100vh;
+      font-family: 'Arial', sans-serif;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: flex-start;
+      height: 100vh;
+      margin: 0;
+      background-color: #fafafa;
     }
-
     h1 {
-      margin: 20px 0;
-      font-size: 1.8rem;
-      text-align: center;
+      margin: 20px;
     }
-
-    #board {
+    .board {
       display: grid;
-      grid-template-columns: repeat(5, 60px);
-      grid-template-rows: repeat(6, 60px);
-      gap: 8px;
+      grid-template-rows: repeat(6, 1fr);
+      gap: 5px;
       margin-top: 20px;
     }
-
+    .row {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 5px;
+    }
     .tile {
       width: 60px;
       height: 60px;
-      border: 2px solid #3a3a3c;
+      border: 2px solid #ccc;
       display: flex;
-      align-items: center;
       justify-content: center;
+      align-items: center;
       font-size: 2rem;
+      font-weight: bold;
       text-transform: uppercase;
-      background-color: #121213;
-      border-radius: 5px;
+      background-color: white;
     }
-
-    .correct { background-color: #538d4e !important; }
-    .present { background-color: #b59f3b !important; }
-    .absent { background-color: #3a3a3c !important; }
-
-    #guessInput {
+    .correct {
+      background-color: #6aaa64;
+      color: white;
+    }
+    .present {
+      background-color: #c9b458;
+      color: white;
+    }
+    .absent {
+      background-color: #787c7e;
+      color: white;
+    }
+    #message {
+      margin-top: 20px;
+      font-weight: bold;
+    }
+    #hidden-input {
       opacity: 0;
       position: absolute;
-      top: 0;
-      left: 0;
-      width: 1px;
-      height: 1px;
-      border: none;
-    }
-
-    @media (max-width: 600px) {
-      #board {
-        grid-template-columns: repeat(5, 50px);
-        grid-template-rows: repeat(6, 50px);
-      }
-      .tile {
-        width: 50px;
-        height: 50px;
-        font-size: 1.5rem;
-      }
+      pointer-events: none;
     }
   </style>
 </head>
 <body>
-  <h1>Khushi's Wordle 💖</h1>
-  <div id="board"></div>
-  <input id="guessInput" type="text" maxlength="5" autocapitalize="none" />
+  <h1>Khushi's Wordle</h1>
+  <div class="board" id="board"></div>
+  <p id="message"></p>
+  <input type="text" id="hidden-input" maxlength="5" />
 
   <script>
-    // Small word list for validation (you can expand this)
-    const dictionary = [
-      "apple","grape","sweet","heart","dream","smile","light","happy","pearl",
-      "lover","angel","charm","shine","magic","flame","peace","truth","laugh",
-      "grace","spark","khush","bliss","petal","candy","music","world","think",
-      "touch","words","smile","spark","bright","night","chase","sound"
-    ];
-
-    let targetWord = dictionary[Math.floor(Math.random() * dictionary.length)];
-    let currentRow = 0;
-    let gameOver = false;
-
     const board = document.getElementById("board");
-    const input = document.getElementById("guessInput");
+    const message = document.getElementById("message");
+    const hiddenInput = document.getElementById("hidden-input");
 
-    // Create 6 rows × 5 columns
-    for (let i = 0; i < 30; i++) {
-      const tile = document.createElement("div");
-      tile.classList.add("tile");
-      board.appendChild(tile);
+    let currentRow = 0;
+    let currentTile = 0;
+    let gameOver = false;
+    let targetWord = "";
+
+    // Load a large 5-letter dictionary
+    let validWords = [];
+
+    async function loadWords() {
+      const res = await fetch("https://raw.githubusercontent.com/dwyl/english-words/master/words_alpha.txt");
+      const text = await res.text();
+      validWords = text.split("\n").filter(w => w.length === 5);
+      pickRandomWord();
     }
 
-    // Focus input when tapping board (mobile keyboard opens)
-    board.addEventListener("click", () => {
-      input.focus();
-    });
+    function pickRandomWord() {
+      targetWord = validWords[Math.floor(Math.random() * validWords.length)].toLowerCase();
+      console.log("Target:", targetWord); // For testing
+    }
 
-    input.addEventListener("input", (e) => {
-      const guess = e.target.value.toLowerCase();
-      const tiles = Array.from(board.children).slice(currentRow * 5, currentRow * 5 + 5);
-
-      tiles.forEach((tile, i) => {
-        tile.textContent = guess[i] || "";
-      });
-
-      if (guess.length === 5) {
-        submitGuess(guess);
+    // Create grid
+    for (let i = 0; i < 6; i++) {
+      const row = document.createElement("div");
+      row.classList.add("row");
+      for (let j = 0; j < 5; j++) {
+        const tile = document.createElement("div");
+        tile.classList.add("tile");
+        row.appendChild(tile);
       }
-    });
+      board.appendChild(row);
+    }
 
-    function submitGuess(guess) {
+    const rows = document.querySelectorAll(".row");
+
+    // Tap anywhere to focus hidden input (for mobile)
+    document.body.addEventListener("click", () => hiddenInput.focus());
+    hiddenInput.addEventListener("input", handleInput);
+
+    function handleInput(e) {
       if (gameOver) return;
+      const value = e.target.value.toLowerCase();
 
-      if (!/^[a-z]{5}$/.test(guess)) {
-        alert("Enter a 5-letter word.");
-        input.value = "";
+      // Only accept letters
+      if (!/^[a-z]*$/.test(value)) {
+        e.target.value = value.replace(/[^a-z]/g, "");
         return;
       }
 
-      // Check if it's a valid English word (within or outside our small list)
-      if (!dictionary.includes(guess)) {
-        alert("❌ Not a valid word!");
-        input.value = "";
+      if (value.length > currentTile) {
+        if (currentTile < 5) {
+          rows[currentRow].children[currentTile].textContent = value[currentTile];
+          currentTile++;
+        }
+      } else if (value.length < currentTile) {
+        currentTile--;
+        rows[currentRow].children[currentTile].textContent = "";
+      }
+
+      if (currentTile === 5 && e.inputType !== "deleteContentBackward") {
+        checkWord(value);
+        e.target.value = "";
+      }
+    }
+
+    function checkWord(word) {
+      if (!validWords.includes(word)) {
+        message.textContent = "Not a valid word!";
         return;
       }
 
-      const targetLetters = targetWord.split("");
-      const guessLetters = guess.split("");
+      const rowTiles = rows[currentRow].children;
+      const targetArr = targetWord.split("");
 
-      guessLetters.forEach((letter, i) => {
-        const tile = board.children[currentRow * 5 + i];
-        if (letter === targetLetters[i]) {
-          tile.classList.add("correct");
-        } else if (targetLetters.includes(letter)) {
-          tile.classList.add("present");
+      for (let i = 0; i < 5; i++) {
+        if (word[i] === targetWord[i]) {
+          rowTiles[i].classList.add("correct");
+        } else if (targetArr.includes(word[i])) {
+          rowTiles[i].classList.add("present");
         } else {
-          tile.classList.add("absent");
+          rowTiles[i].classList.add("absent");
         }
-      });
+      }
 
-      if (guess === targetWord) {
-        setTimeout(() => alert(`💖 You got it! The word was "${targetWord}"`), 200);
-        setTimeout(resetGame, 1000);
+      if (word === targetWord) {
+        message.textContent = "🎉 You guessed it!";
         gameOver = true;
-      } else {
-        currentRow++;
-        input.value = "";
+        return;
+      }
 
-        if (currentRow === 6) {
-          setTimeout(() => alert(`😢 The word was "${targetWord}"`), 200);
-          setTimeout(resetGame, 1000);
-          gameOver = true;
-        }
+      currentRow++;
+      currentTile = 0;
+      if (currentRow === 6) {
+        message.textContent = `😢 The word was ${targetWord.toUpperCase()}`;
+        gameOver = true;
       }
     }
 
-    function resetGame() {
-      Array.from(board.children).forEach(tile => {
-        tile.textContent = "";
-        tile.className = "tile";
-      });
-      currentRow = 0;
-      input.value = "";
-      targetWord = dictionary[Math.floor(Math.random() * dictionary.length)];
-      gameOver = false;
-      input.focus();
-    }
+    loadWords();
   </script>
 </body>
 </html>
