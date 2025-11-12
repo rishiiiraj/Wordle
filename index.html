@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Khushi's Wordle 💛</title>
   <style>
@@ -11,11 +11,12 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
       height: 100vh;
       margin: 0;
+      padding-top: 40px;
     }
-    h1 { margin-bottom: 20px; color: #333; text-align: center; }
+    h1 { color: #333; margin-bottom: 20px; text-align: center; }
     #board {
       display: grid;
       grid-template-rows: repeat(6, 1fr);
@@ -53,6 +54,11 @@
       cursor: pointer;
     }
     button:hover { opacity: 0.9; }
+    #hidden-input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
@@ -61,31 +67,30 @@
   <button id="play-again" style="display:none;">Play Again</button>
   <button id="share" style="display:none;">Share Result</button>
 
+  <!-- Hidden input to trigger mobile keyboard -->
+  <input id="hidden-input" type="text" maxlength="1" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" />
+
   <script>
     const validAnswers = [
       "apple","grape","lemon","mango","pearl","crane","flute","smile","tiger","zebra","brave","charm","flame","ocean","spice",
       "lucky","dream","heart","storm","earth","cloud","river","sugar","swing","trail","glory","night","light","chase","truth",
-      "angel","crown","giant","magic","sword","stone","roast","green","bloom","shine","spoon","taste","glass","flock","bread",
-      "beach","spark","quilt","piano","horse","blush","amber","frost","ghost","berry","punch","cocoa","sweep","daisy","vivid",
-      "honey","grind","chili","brisk","crisp","steel","witty","class","baker","noble","wheat","paint","siren","sweet","plume",
-      "cider","fable","eagle","flair","grill","heist","input","joker","lunar","melon","ninja","olive","peony","quest","raven",
-      "scoop","toast","umbra","vapor","whale","yield","zesty","blaze","caper","drove","elite","fancy","hound","ivory","jewel",
-      "karma","linen","mirth","nurse","oasis","plush","quake","rider","sandy","tidal","vivid","woven","youth","amber","candy",
-      "dizzy","flask","gleam","hazel","index","jolly","kneel","latch","mimic","naval","perch","quirk","reign","savor","tempo",
-      "unity","vital","woven","yacht","zebra"
+      "angel","crown","giant","magic","sword","stone","roast","green","bloom","shine","taste","glass","bread","beach","spark",
+      "quilt","piano","horse","blush","amber","frost","ghost","berry","punch","cocoa","daisy","vivid","honey","grind","chili",
+      "crisp","steel","witty","class","noble","wheat","paint","siren","sweet","plume","cider","fable","eagle","flair","grill",
+      "lunar","melon","olive","peony","quest","raven","scoop","toast","vapor","whale","zesty","blaze","elite","fancy","jewel",
+      "linen","mirth","nurse","oasis","quake","rider","sandy","tidal","woven","youth","amber","candy","flask","gleam","hazel",
+      "index","jolly","kneel","latch","mimic","naval","perch","quirk","reign","savor","tempo","unity","vital","woven","zebra"
     ];
 
     let answer = validAnswers[Math.floor(Math.random() * validAnswers.length)];
-    let currentRow = 0;
-    let currentCol = 0;
-    let gameOver = false;
+    let currentRow = 0, currentCol = 0, gameOver = false;
     let resultsGrid = [];
-
     const board = document.getElementById("board");
+    const input = document.getElementById("hidden-input");
     const playAgainBtn = document.getElementById("play-again");
     const shareBtn = document.getElementById("share");
 
-    // create grid
+    // Create grid
     for (let i = 0; i < 6; i++) {
       const row = document.createElement("div");
       row.classList.add("row");
@@ -97,9 +102,20 @@
       board.appendChild(row);
     }
 
-    document.addEventListener("keydown", handleKeyPress);
+    // Focus hidden input on tap to open mobile keyboard
+    document.body.addEventListener("click", () => {
+      input.focus();
+    });
 
-    function handleKeyPress(e) {
+    // Handle input from keyboard
+    document.addEventListener("keydown", handleKey);
+    input.addEventListener("input", e => {
+      const val = e.target.value;
+      if (/^[a-zA-Z]$/.test(val)) handleKey({ key: val });
+      input.value = ""; // clear after every key
+    });
+
+    function handleKey(e) {
       if (gameOver) return;
       const rows = document.querySelectorAll(".row");
       const currentTiles = rows[currentRow].querySelectorAll(".tile");
@@ -110,9 +126,7 @@
           currentTiles[currentCol].textContent = "";
         }
       } else if (e.key === "Enter") {
-        if (currentCol === 5) {
-          checkGuess(currentTiles);
-        }
+        if (currentCol === 5) checkGuess(currentTiles);
       } else if (/^[a-zA-Z]$/.test(e.key)) {
         if (currentCol < 5) {
           currentTiles[currentCol].textContent = e.key.toUpperCase();
@@ -122,38 +136,34 @@
     }
 
     function checkGuess(tiles) {
-      let guess = "";
-      tiles.forEach(tile => guess += tile.textContent.toLowerCase());
-
-      const result = [];
+      const guess = Array.from(tiles).map(t => t.textContent.toLowerCase()).join("");
       const answerLetters = answer.split("");
       const guessLetters = guess.split("");
-      const answerUsed = Array(5).fill(false);
 
-      // Pass 1: mark greens
+      const answerCount = {};
+      answerLetters.forEach(l => answerCount[l] = (answerCount[l] || 0) + 1);
+
+      const result = Array(5).fill("absent");
+
+      // Pass 1: mark greens and reduce count
       for (let i = 0; i < 5; i++) {
         if (guessLetters[i] === answerLetters[i]) {
           result[i] = "correct";
-          answerUsed[i] = true;
+          answerCount[guessLetters[i]]--;
         }
       }
 
-      // Pass 2: mark yellows
+      // Pass 2: mark yellows for remaining letters
       for (let i = 0; i < 5; i++) {
-        if (!result[i]) {
-          const foundIndex = answerLetters.findIndex(
-            (ch, idx) => ch === guessLetters[i] && !answerUsed[idx]
-          );
-          if (foundIndex !== -1) {
-            result[i] = "present";
-            answerUsed[foundIndex] = true;
-          } else {
-            result[i] = "absent";
-          }
+        if (result[i] === "correct") continue;
+        const letter = guessLetters[i];
+        if (answerCount[letter] > 0) {
+          result[i] = "present";
+          answerCount[letter]--;
         }
       }
 
-      // Apply styles
+      // Apply colors
       let emojiRow = "";
       for (let i = 0; i < 5; i++) {
         tiles[i].classList.add(result[i]);
@@ -161,11 +171,9 @@
       }
       resultsGrid.push(emojiRow);
 
-      if (guess === answer) {
-        endGame(true);
-      } else if (currentRow === 5) {
-        endGame(false);
-      } else {
+      if (guess === answer) endGame(true);
+      else if (currentRow === 5) endGame(false);
+      else {
         currentRow++;
         currentCol = 0;
       }
@@ -175,16 +183,13 @@
       gameOver = true;
       playAgainBtn.style.display = "inline-block";
       shareBtn.style.display = "inline-block";
-      let message = won ? `You got it! 🎉 The word was: ${answer.toUpperCase()}` :
-                          `Game over! The word was: ${answer.toUpperCase()}`;
-      alert(message);
+      const msg = won ? `🎉 You got it! The word was ${answer.toUpperCase()}` : `❌ Game over! The word was ${answer.toUpperCase()}`;
+      alert(msg);
     }
 
     playAgainBtn.onclick = () => location.reload();
-
     shareBtn.onclick = () => {
-      const emojiText = resultsGrid.join("\n");
-      const text = `Khushi's Wordle 💛\n${emojiText}\nhttps://rishiiiraj.github.io/Wordle/`;
+      const text = `Khushi's Wordle 💛\n${resultsGrid.join("\n")}\nhttps://rishiiiraj.github.io/Wordle/`;
       navigator.clipboard.writeText(text);
       alert("Copied results to clipboard!");
     };
